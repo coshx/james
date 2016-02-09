@@ -22,3 +22,11 @@ _testmain.go
 *.exe
 *.test
 *.prof
+
+# Tmp files
+.DS_Store
+*~
+
+# Gom
+_vendor/
+james

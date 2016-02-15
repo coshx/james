@@ -103,7 +103,7 @@ func fetchHome(blogPosts map[string] *BlogPost, whenDone chan bool) {
     }
 }
 
-func main() {
+func indexBlog() {
     fmt.Printf("Starting indexation...\n")
 
     whenFetchHomeDone := make(chan bool)
@@ -122,4 +122,99 @@ func main() {
     }
 
     fmt.Printf("Indexation OVER\n");
+}
+
+func compareWords(w1 string, w2 string) float64 {
+    var s int
+    var prev1 string
+    var prev2 string
+    score := 0.0
+
+    s1 := xstrings.Len(w1)
+    s2 := xstrings.Len(w2)
+    if s1 < s2 {
+        s = s1
+    } else {
+        s = s2
+    }
+
+    for i := 0; i < s; i++ {
+        a := string(w1[i])
+        b := string(w2[i])
+
+        if i > 0 {
+            if prev1 == prev2 && a == b {
+                score += 1
+            } else if prev1 == b && prev2 == a {
+                score += 0.9
+            } else if prev1 == prev2 || a == b {
+                score += 0.75
+            }
+        }
+
+        prev1 = a
+        prev2 = b
+    }
+
+    return score / float64(s - 1)
+}
+
+func computeWeight(input []string, references []string, coeff int) float64 {
+    weight := 0.0
+
+    for _, w1 := range input {
+        for _, w2 := range references {
+            rate := compareWords(w1, w2)
+            if rate >= appConfiguration["compare_words_ratio"].FloatValue {
+                // A word has been identified
+                weight += rate * float64(coeff)
+                break
+            }
+        }
+    }
+
+    return weight
+}
+
+func computeWeightWithMap(input []string, references map[string] int) float64 {
+    weight := 0.0
+
+    for _, w1 := range input {
+        for w2, coeff := range references {
+            rate := compareWords(w1, w2)
+            if rate >= appConfiguration["compare_words_ratio"].FloatValue {
+                // A word has been identified
+                weight += rate * float64(coeff)
+                break
+            }
+        }
+    }
+
+    return weight
+}
+
+func search(rawKeywords []string, whenDone chan []BlogPost)  {
+    outcome := SortedList {}
+    posts := extractBlogPosts()
+    keywords := make([]string, len(rawKeywords))
+
+    for _, s := range rawKeywords {
+        keywords = append(keywords, strings.ToLower(strings.Trim(s, " ")))
+    }
+
+    for _, e := range posts {
+        weight := 0.0
+
+        weight += computeWeight(keywords, strings.Split(e.Headline, " "), appConfiguration["headline_coeff"].IntValue)
+        weight += computeWeight(keywords, strings.Split(e.Author, " "), appConfiguration["author_coeff"].IntValue)
+        weight += computeWeightWithMap(keywords, e.ContentHash)
+
+        outcome.Push(weight, e)
+    }
+
+    whenDone <- outcome.ToArray()
+}
+
+func main() {
+
 }

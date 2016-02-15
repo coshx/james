@@ -2,29 +2,16 @@ package main
 
 import (
     "fmt"
-    "container/list"
     "regexp"
     "strings"
     "github.com/PuerkitoBio/goquery"
     "github.com/huandu/xstrings"
+    "time"
+    "strconv"
 )
 
-var appConfiguration = map[string] string {
-    //"website_root": "http://www.coshx.com",
-    "website_root": "http://localhost:4567/",
-    //"blog_homepage": "http://www.coshx.com/blog/",
-    "blog_homepage": "http://localhost:4567/blog/",
-    "min_word_length": "3",
-}
-
-// struct Type Article {
-
-// }
-
-var articles = list.New()
-
-func enginePost(href string, whenDone chan bool) {
-    doc, err := goquery.NewDocument(href)
+func enginePost(blogPosts map[string] *BlogPost, href string, whenDone chan bool) {
+    doc, err := goquery.NewDocument(appConfiguration["website_root"].StringValue + href)
 
     if err != nil {
         fmt.Printf("Impossible to reach %s\n", href)
@@ -32,37 +19,47 @@ func enginePost(href string, whenDone chan bool) {
         return
     }
 
-    //author := doc.Find(".james-author").Text()
-    //headline := doc.Find(".james-headline").Text()
+    author := doc.Find(".james-author").Text()
+    headline := doc.Find(".james-headline").Text()
     text := doc.Find(".james-content").Text()
-    //timestamp, _ := doc.Find(".james-date").Attr("data-timestamp")
+    timestamp, _ := doc.Find(".james-date").Attr("data-timestamp")
+    parsedTime, _ := strconv.ParseInt(timestamp, 10, 64)
+    hash := make(map[string] int)
+
+    post := BlogPost{
+        href,
+        author,
+        headline,
+        time.Unix(parsedTime, 0),
+        hash,
+    }
 
     buffer := ""
-    var hash = make(map[string] int)
     for i := 0; i < xstrings.Len(text); i++ {
         c := string(text[i])
         if isMatching, _ := regexp.MatchString("[a-zA-Z0-9]", c); isMatching == true {
             buffer += c
         } else if buffer != "" {
-            if xstrings.Len(buffer) >= /*appConfiguration["min_word_length"]*/ 3 {
+            if xstrings.Len(buffer) >= appConfiguration["min_word_length"].IntValue {
                 buffer = strings.ToLower(buffer)
                 e, exists := hash[buffer]
                 if exists {
                     hash[buffer] = e + 1
                 } else {
-                    hash[buffer] = 0
+                    hash[buffer] = 1
                 }
             }
             buffer = ""
         }
     }
 
-    articles.PushBack(hash)
+    blogPosts[href] = &post
+
     whenDone <- true
 }
 
-func fetchHome(whenDone chan bool) {
-    doc, err := goquery.NewDocument(appConfiguration["blog_homepage"])
+func fetchHome(blogPosts map[string] *BlogPost, whenDone chan bool) {
+    doc, err := goquery.NewDocument(appConfiguration["blog_homepage"].StringValue)
 
     if err != nil {
         fmt.Printf("Impossible to reach homepage")
@@ -81,16 +78,7 @@ func fetchHome(whenDone chan bool) {
                 ended++
                 if ended == started {
                     close(buffer)
-                    if articles.Len() > 0 {
-                        element := articles.Front()
-                        for {
-                            fmt.Printf("%v\n", element)
-                            element = element.Next()
-                            if element == nil {
-                                break
-                            }
-                        }
-                    }
+                    fmt.Printf("DONE\n")
                     whenDone <- true
                 }
             }
@@ -98,16 +86,40 @@ func fetchHome(whenDone chan bool) {
     }()
 
     doc.Find(".james-blogposts .james-post").Each(func (i int, s *goquery.Selection) {
-        link, isExisting := s.Attr("href")
-        if isExisting {
+        link, isLinkExisting := s.Attr("href")
+        _, isPostAlreadyIndexed := blogPosts[link]
+
+        if isLinkExisting && !isPostAlreadyIndexed {
             started++
-            go enginePost(appConfiguration["website_root"] + link, buffer)
+            go enginePost(blogPosts, link, buffer)
         }
     })
+
+    if started == 0 {
+        fmt.Printf("No post to analyse!\n")
+        whenDone <- false
+    } else {
+        fmt.Printf("Analysing %d posts... ", started)
+    }
 }
 
 func main() {
-    var c = make(chan bool)
-    go fetchHome(c)
-    <- c
+    fmt.Printf("Starting indexation...\n")
+
+    whenFetchHomeDone := make(chan bool)
+
+    fmt.Printf("Extracting blog posts... ")
+    blogPosts := extractBlogPosts()
+    fmt.Printf("DONE\n")
+
+    go fetchHome(blogPosts, whenFetchHomeDone)
+    hasToSave := <- whenFetchHomeDone
+
+    if hasToSave {
+        fmt.Printf("Saving latest data... ")
+        saveBlogPosts(blogPosts)
+        fmt.Printf("DONE\n");
+    }
+
+    fmt.Printf("Indexation OVER\n");
 }

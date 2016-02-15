@@ -30,3 +30,4 @@ _testmain.go
 # Gom
 _vendor/
 james
+saved_data.json

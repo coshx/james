@@ -1,0 +1,22 @@
+{
+  "name": "james",
+  "homepage": "https://github.com/coshx/james",
+  "authors": [
+    "Adrien Cadet <adrien@coshx.com>"
+  ],
+  "description": "",
+  "main": "",
+  "moduleType": [],
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "devDependencies": {
+    "bourbon": "^4.2.6"
+  }
+}

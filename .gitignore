@@ -31,3 +31,10 @@ _testmain.go
 _vendor/
 james
 saved_data.json
+
+# Assets
+assets/node_modules
+assets/bower_components
+assets/js
+assets/css
+templates/

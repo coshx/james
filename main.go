@@ -8,6 +8,7 @@ import (
     "github.com/huandu/xstrings"
     "time"
     "strconv"
+    "github.com/gin-gonic/gin"
 )
 
 func enginePost(blogPosts map[string] *BlogPost, href string, whenDone chan bool) {
@@ -193,14 +194,9 @@ func computeWeightWithMap(input []string, references map[string] int) float64 {
     return weight
 }
 
-func search(rawKeywords []string, whenDone chan []BlogPost)  {
+func search(keywords []string, whenDone chan []BlogPost)  {
     outcome := SortedList {}
     posts := extractBlogPosts()
-    keywords := make([]string, len(rawKeywords))
-
-    for _, s := range rawKeywords {
-        keywords = append(keywords, strings.ToLower(strings.Trim(s, " ")))
-    }
 
     for _, e := range posts {
         weight := 0.0
@@ -216,5 +212,33 @@ func search(rawKeywords []string, whenDone chan []BlogPost)  {
 }
 
 func main() {
+    router := gin.Default()
+    router.LoadHTMLGlob("templates/*")
 
+    router.GET("/", func(c *gin.Context) {
+        c.HTML(200, "index.tmpl", gin.H {})
+    })
+
+    router.GET("/search", func(c *gin.Context) {
+        rawKeywords := strings.Split(c.Query("keywords"), "+")
+        keywords := make([]string, len(rawKeywords))
+        whenSearchIsDone := make(chan []BlogPost)
+
+        for _, s := range rawKeywords {
+            keywords = append(keywords, strings.ToLower(strings.Trim(s, " ")))
+        }
+
+        go search(keywords, whenSearchIsDone)
+
+        posts := <- whenSearchIsDone
+
+        c.JSON(200, gin.H {"posts": posts})
+    })
+
+    router.POST("/reset", func(c *gin.Context) {
+        indexBlog()
+        c.JSON(200, gin.H {})
+    })
+
+    router.Run()
 }

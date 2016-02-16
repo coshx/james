@@ -1,0 +1,5 @@
+.search-box-wrapper {
+  position: absolute;
+
+  @include transition(top .5s ease, left .5s ease);
+}

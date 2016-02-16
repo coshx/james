@@ -11,6 +11,11 @@ type SortedList struct {
     Size int
 }
 
+type WrappedBlogPost struct {
+    Value BlogPost
+    Weight float64
+}
+
 func (this *SortedList) Push(weight float64, post *BlogPost) {
     e := this.Head
     var prev *SortedListElement
@@ -58,12 +63,12 @@ func (this *SortedList) Push(weight float64, post *BlogPost) {
     }
 }
 
-func (this *SortedList) ToArray() []BlogPost {
+func (this *SortedList) ToArray() []WrappedBlogPost {
     e := this.Head
-    outcome := make([]BlogPost, this.Size)
+    outcome := make([]WrappedBlogPost, this.Size)
 
     for i := 0; i < this.Size; i++ {
-        outcome = append(outcome, *e.Value)
+        outcome[i] = WrappedBlogPost { *e.Value, e.Weight }
         e = e.Next
     }
 

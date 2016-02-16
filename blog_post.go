@@ -3,6 +3,7 @@ package main
 import (
     "time"
     "io/ioutil"
+    "os"
     "github.com/ricardolonga/jsongo"
     "github.com/antonholmquist/jason"
 )
@@ -13,6 +14,10 @@ type BlogPost struct {
     Headline string
     Date time.Time
     ContentHash map[string] int
+}
+
+func resetIndexation() {
+    os.Remove(appConfiguration["saved_data_filename"].StringValue)
 }
 
 func saveBlogPosts(hash map[string] *BlogPost) {
@@ -70,4 +75,22 @@ func extractBlogPosts() map[string] *BlogPost {
     }
 
     return outcome
+}
+
+func toJSON(posts []WrappedBlogPost) string {
+    outcome := jsongo.Array()
+
+    for _, e := range posts {
+        o := jsongo.Object()
+
+        o.Put("Path", appConfiguration["website_root"].StringValue + e.Value.LocalPath)
+        o.Put("Author", e.Value.Author)
+        o.Put("Headline", e.Value.Headline)
+        o.Put("Date", string(e.Value.Date.Unix()))
+        o.Put("Weight", e.Weight)
+
+        outcome.Put(o)
+    }
+
+    return outcome.String()
 }

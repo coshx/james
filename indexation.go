@@ -32,9 +32,11 @@ func enginePost(blogPosts map[string] *BlogPost, href string, whenDone chan bool
         headline,
         time.Unix(parsedTime, 0),
         hash,
+        "",
     }
 
     buffer := ""
+    words := 0
     for i := 0; i < xstrings.Len(text); i++ {
         c := string(text[i])
         if isMatching, _ := regexp.MatchString("[a-zA-Z0-9]", c); isMatching == true {
@@ -49,6 +51,15 @@ func enginePost(blogPosts map[string] *BlogPost, href string, whenDone chan bool
                     hash[buffer] = 1
                 }
             }
+
+            if words < appConfiguration["brief_number_of_words"].IntValue {
+                if words > 0 {
+                    post.Brief += " "
+                }
+                post.Brief += buffer
+                words++
+            }
+
             buffer = ""
         }
     }

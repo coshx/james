@@ -17,4 +17,5 @@ var appConfiguration = map[string] ConfigurationEntry {
     "headline_coeff": ConfigurationEntry { "15", 15, 0 },
     "author_coeff": ConfigurationEntry { "10", 10, 0 },
     "minimum_weight": ConfigurationEntry { "5.0", 0, 5.0},
+    "brief_number_of_words": ConfigurationEntry { "50", 50, 0},
 }
